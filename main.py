@@ -1,23 +1,30 @@
 from PIL import Image, ImageDraw, ImageFont
-import os
 
-path_images = 'F:/pillow2/images/'
-images = []
-canvas = Image.new('RGB', (1600, 600))
-image_drawer = ImageDraw.Draw(canvas)
+image = Image.open(f'images/img.png').convert('RGBA')
+qr = Image.open('images/qr.png').convert('RGBA')
+logo = Image.open('images/logo.png').convert('RGBA')
+out = 'F:/pillow1/images/out/img.png'
+im_width = 1000
 
-for path in os.listdir(path_images):
-    if os.path.isfile(path_images + path):
-        images.append(Image.open(path_images + path))
+assert im_width >= 480, RuntimeError("Small size")
+im_height = im_width * image.size[1] // image.size[0]
+image = image.resize((im_width, im_height), Image.ANTIALIAS)
 
-for i, image in enumerate(images):
-    image = image.resize((300, 600), Image.ANTIALIAS)
-    images[i] = image
+lo_width = im_width // 10
+lo_height = lo_width * logo.size[1] // logo.size[0]
+logo = logo.resize((lo_width, lo_height), Image.ANTIALIAS)
 
-    canvas.paste(image, (300 * i, 0))
-    image_drawer.text((300 * i + 100, 580), f'ISO:{image.getexif().get(34855)}',
-                      font=ImageFont.truetype("arial.ttf", size=22), fill=(25, 255, 0)
-                      )
+qr = qr.resize((100, 100), Image.ANTIALIAS)
 
-canvas.save(path_images + 'result/img.jpg')
-canvas.show()
+if image.size[1] > image.size[0]:
+    image = image.rotate(180)
+
+draw = ImageDraw.Draw(image)
+date = image.getexif().get(36868).split()[0]
+text = "Тони Толстячок"
+font = ImageFont.truetype("arial.ttf", size=24)
+draw.text((im_width // 2 - 125, im_height - 25), f"{text} {date}", font=font)
+
+image.paste(logo, (im_width - lo_width, 0), logo)
+image.paste(qr, (0, 0))
+image.save(out)
