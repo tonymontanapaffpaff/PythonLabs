@@ -1,30 +1,33 @@
-from PIL import Image, ImageDraw, ImageFont
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
-image = Image.open(f'images/img.png').convert('RGBA')
-qr = Image.open('images/qr.png').convert('RGBA')
-logo = Image.open('images/logo.png').convert('RGBA')
-out = 'F:/pillow1/images/out/img.png'
-im_width = 1000
+df = pd.read_csv('https://raw.githubusercontent.com/datasets/covid-19/master/data/countries-aggregated.csv', parse_dates=['Date'])
+countries = ['Belarus', 'Ukraine', 'Russia']
+df = df[df['Country'].isin(countries)]
 
-assert im_width >= 480, RuntimeError("Small size")
-im_height = im_width * image.size[1] // image.size[0]
-image = image.resize((im_width, im_height), Image.ANTIALIAS)
+df['Cases'] = df[['Confirmed', 'Recovered', 'Deaths']].sum(axis=1)
 
-lo_width = im_width // 10
-lo_height = lo_width * logo.size[1] // logo.size[0]
-logo = logo.resize((lo_width, lo_height), Image.ANTIALIAS)
+df = df.pivot(index='Date', columns='Country', values='Cases')
+countries = list(df.columns)
+covid = df.reset_index('Date')
+covid.set_index(['Date'], inplace=True)
+covid.columns = countries
 
-qr = qr.resize((100, 100), Image.ANTIALIAS)
+colors = {'Belarus': '#045275', 'Ukraine': '#089099', 'Russia': '#7CCBA2'}
+plt.style.use('fivethirtyeight')
+plot = covid.plot(figsize=(12, 8), color=list(colors.values()), linewidth=4, legend=False)
+plot.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+plot.grid(color='#d4d4d4')
+plot.set_xlabel('Date')
+plot.set_ylabel('Number of cases')
 
-if image.size[1] > image.size[0]:
-    image = image.rotate(180)
+for country in list(colors.keys()):
+    plot.text(x=covid.index[-1], y=covid[country].max(), c=colors[country], s=country, weight='bold')
 
-draw = ImageDraw.Draw(image)
-date = image.getexif().get(36868).split()[0]
-text = "Тони Толстячок"
-font = ImageFont.truetype("arial.ttf", size=24)
-draw.text((im_width // 2 - 125, im_height - 25), f"{text} {date}", font=font)
+plot.text(x=covid.index[1], y=int(covid.max().max()) + 45000, s="COVID-19 cases by Country", fontsize=23, weight='bold',
+          alpha=.75)
+plot.text(x=covid.index[1], y=int(covid.max().max()) + 15000, s="For the Belarus, Ukraine and Russia", fontsize=15,
+          alpha=.5)
 
-image.paste(logo, (im_width - lo_width, 0), logo)
-image.paste(qr, (0, 0))
-image.save(out)
+plt.show()
